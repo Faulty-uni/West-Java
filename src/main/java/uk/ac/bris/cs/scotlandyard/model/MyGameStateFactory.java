@@ -18,6 +18,13 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 	private final class MyGameState implements GameState {
 
+		private GameSetup setup;
+		private ImmutableSet<Piece> remaining;
+		private ImmutableList<LogEntry> log;
+		private Player mrX;
+		private List<Player> detectives;
+		private ImmutableSet<Move> moves;
+		private ImmutableSet<Piece> winner;
 
 		//final means that the data that it initialises is "immutable"
 		//like const except is initialised at runtime rather than compile time
@@ -27,26 +34,35 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			final ImmutableList<LogEntry> log,
 			final Player mrX,
 			final List<Player> detectives){
-			
-			}
+
+			this.setup = setup;
+			this.remaining = remaining;
+			this.log = log;
+			this.mrX = mrX;
+			this.detectives = detectives;
+
+			if(setup.moves.isEmpty()) throw new IllegalArgumentException("Moves is empty");
 		}
-		private GameSetup setup;
-		private ImmutableSet<Piece> remaining;
-		private ImmutableList<LogEntry> log;
-		private Player mrX;
-		private List<Player> detectives;
-		private ImmutableSet<Move> moves;
-		private ImmutableSet<Piece> winner;
-		@Override public GameSetup getSetup() { return null;}
+		@Override public GameSetup getSetup() { return setup;}
+		@Override public ImmutableList<LogEntry> getMrXTravelLog() { return log; }
+		@Override public Optional<Integer> getDetectiveLocation(Detective detective) {
+			//loop over detectives, if the piece is detective return location in Optional.of()
+
+			for (Player d : detectives) {
+				if (d.piece() == detective) return Optional.of(0);
+			}
+			return Optional.empty();
+		}
+		@Nonnull Optional<Board.TicketBoard> getPlayerTicket(Piece piece) {
+			if (piece == detectives) return Optional.of(1)
+			return Optional.empty();
+		}
 		@Override public ImmutableSet<Piece> getPlayers() {return null;}
 		@Override public GameState advance(Move move) {return null;}
 	}
-	/*@Nonnull @Override public GameState build(
-			GameSetup setup,
-			Player mrX,
-			ImmutableList<Player> detectives) {
-		// TODO
-		throw new RuntimeException("Implement me!");
-	*/
+	@Nonnull @Override public GameState build(
+			GameSetup setup, Player mrX, ImmutableList<Player> detectives) {
 
+		return new MyGameState(setup, ImmutableSet.of(MrX.MRX), ImmutableList.of(), mrX, detectives);
+	}
 }
