@@ -18,11 +18,11 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 	private final class MyGameState implements GameState, Board.TicketBoard {
 
-		private GameSetup setup;
-		private ImmutableSet<Piece> remaining;
-		private ImmutableList<LogEntry> log;
-		private Player mrX;
-		private List<Player> detectives;
+		final private GameSetup setup;
+		final private ImmutableSet<Piece> remaining;
+		final private ImmutableList<LogEntry> log;
+		final private Player mrX;
+		final private List<Player> detectives;
 		private ImmutableSet<Move> moves;
 		private ImmutableSet<Piece> winner;
 //		private int numOfX;
@@ -46,8 +46,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			if (setup.moves.isEmpty()) throw new IllegalArgumentException("Moves is empty");
 			if (this.detectives.isEmpty()) throw new IllegalArgumentException("Detectives is empty");
 			if (!this.mrX.isMrX()) throw new IllegalArgumentException("MrX is null");
-
-			
+			if (setup.moves.size() != this.detectives.size()) throw new IllegalArgumentException("Detectives size mismatch");
+			if(!setup.graph.isDirected()) throw new IllegalArgumentException("Graph is not directed");
 			/*			for (Player detective : detectives) {
 				if (getLocation(detective) != ) throw new IllegalArgumentException("2 Detectives in the same place");
 			}
@@ -58,8 +58,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			}*/
 
 		}
-		@Override public GameSetup getSetup() { return setup;}
-		@Override public ImmutableList<LogEntry> getMrXTravelLog() { return log; }
+		@Nonnull @Override public GameSetup getSetup() {return setup;}
+		@Nonnull @Override public ImmutableList<LogEntry> getMrXTravelLog() { return log; }
 
 		@Nonnull @Override public ImmutableSet<Piece> getWinner() {
 
