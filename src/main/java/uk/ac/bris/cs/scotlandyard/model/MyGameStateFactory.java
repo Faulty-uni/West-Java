@@ -25,7 +25,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		private List<Player> detectives;
 		private ImmutableSet<Move> moves;
 		private ImmutableSet<Piece> winner;
-//		private int numOfX;
+		private int numOfX;
 
 		//final means that the data that it initialises is "immutable"
 		//like const except is initialised at runtime rather than compile time
@@ -36,7 +36,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			final Player mrX,
 			final List<Player> detectives){
 
-//			this.numOfX = 0;
+			this.numOfX = 0;
 			this.setup = setup;
 			this.remaining = remaining;
 			this.log = log;
@@ -48,14 +48,14 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			if (!this.mrX.isMrX()) throw new IllegalArgumentException("MrX is null");
 
 			
-			/*			for (Player detective : detectives) {
+			/*for (Player detective : detectives) {
 				if (getLocation(detective) != ) throw new IllegalArgumentException("2 Detectives in the same place");
-			}
-			for (Piece p : this.remaining) {
+			} */
+			for (Player p : detectives) {
 				System.out.println(numOfX);
-				if (p.isDetective()) numOfX+=1;
-				if (numOfX > 1) throw new IllegalArgumentException("MrX contains more than one piece");
-			}*/
+				if (p.isMrX()) numOfX+=1;
+				if (numOfX > 0) throw new IllegalArgumentException("MrX contains more than one piece");
+			}
 
 		}
 		@Override public GameSetup getSetup() { return setup;}
