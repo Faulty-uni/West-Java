@@ -135,6 +135,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		@Override
 		@Nonnull
 		public Optional<Board.TicketBoard> getPlayerTickets(Piece piece) {
+			//used lambdas to make our lives easier
+			//used getOrDefault instead of mapping becasue mapping can cause NullPointer error
 			for (Player p : detectives) {
 				if (p.piece().equals(piece)) {
 					return Optional.of(ticket -> p.tickets().getOrDefault(ticket, 0));
