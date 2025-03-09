@@ -98,7 +98,9 @@ public final class MyGameStateFactory implements Factory<GameState> {
 				if (p.isMrX()) throw new IllegalArgumentException("Detective cannot be MrX");
 				if (p.has(Ticket.SECRET)) throw new IllegalArgumentException("Detective has secret tickets");
 				if (p.has(Ticket.DOUBLE)) throw new IllegalArgumentException("Detective has double tickets");
-				if (!locations.add(p.location())) throw new IllegalArgumentException("Duplicate detective location");}}
+				if (!locations.add(p.location())) throw new IllegalArgumentException("Duplicate detective location");
+			}
+		}
 
 		@Nonnull @Override public GameSetup getSetup() {return setup;}
 
@@ -176,53 +178,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 					player = getDetective(piece);
 				}
 
-				if (player != null) {
-					//Set<SingleMove> playerMoves = makeSingleMoves(setup, detectives, player, player.location());
-					final class SingleMove implements Move {
-						@Nonnull @Override
-						public Piece commencedBy() {
-							return null;
-						}
-
-						@Nonnull @Override
-						public Iterable<Ticket> tickets() {
-							return null;
-						}
-
-						@Override
-						public int source() {
-							return 0;
-						}
-
-						@Override
-						public <T> T accept(Visitor<T> visitor) {
-							return null;
-						}
-					}
-					if (piece.isMrX()){
-						final class DoubleMove implements Move {
-
-							@Nonnull @Override
-							public Piece commencedBy() {
-								return null;
-							}
-
-							@Nonnull @Override
-							public Iterable<Ticket> tickets() {
-								return null;
-							}
-
-							@Override
-							public int source() {
-								return 0;
-							}
-
-							@Override
-							public <T> T accept(Visitor<T> visitor) {
-								return null;
-							}
-						}
-					}
+				if (player != null) {Set<SingleMove> playerMoves = makeSingleMoves(setup, detectives, player, player.location());
 					availableMoves.addAll(playerMoves);
 				}
 			}
@@ -239,7 +195,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		public Optional<Board.TicketBoard> getPlayerTickets(Piece piece) {
 			for (Player p : detectives) {if (p.piece().equals(piece)) return Optional.of(ticket -> p.tickets().getOrDefault(ticket, 0));}
 			if (mrX.piece().equals(piece)) return Optional.of(ticket -> mrX.tickets().getOrDefault(ticket, 0));
-			return Optional.empty();}
+			return Optional.empty();
+		}
 
 		@Nonnull @Override public ImmutableSet<Piece> getPlayers() {
 			Set<Piece> detectivePieces = new HashSet<>();
