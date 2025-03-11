@@ -19,7 +19,7 @@ public final class MyModelFactory implements Factory<Model> {
 	                                      ImmutableList<Player> detectives) {
 		return new Model(){
 			ImmutableSet<Model.Observer> observerSet = ImmutableSet.of();
-			List<Observer> newObserverSet = new ArrayList<>();
+			List<Observer> newObserverSet = new ArrayList<>(); //intermediary list used to add new elements to ImmutableSet
 
 			@Nonnull @Override
 			public Board getCurrentBoard() {
@@ -29,23 +29,29 @@ public final class MyModelFactory implements Factory<Model> {
 			@Override
 			public void registerObserver(@Nonnull Observer observer) {
 				if (observer.equals(null)) throw new NullPointerException("Null observer");
-				for (Observer o : observerSet) {
-					if (o.equals(observer)) throw new IllegalArgumentException("Observer already registered");
-				}
+				if (observerSet.contains(observer)) throw new IllegalArgumentException("Observer already registered");
 				newObserverSet.addAll(observerSet);
 				newObserverSet.add(observer);
 				observerSet = ImmutableSet.copyOf(newObserverSet);
 				newObserverSet.clear();
 
-//				observers.stream()
-//				.filter(o -> o == observer)
-//				.findAny()
-//				.ifPresentOrElse(o -> {throw new IllegalArgumentException("Observer already registered");}, () -> observers.add(observer));
+//				newObserverSet.addAll(observerSet); //added first so that findAny can look through the list
+//				newObserverSet.stream()
+//				.findAny()						//find any: Optional return type, either null or set
+//				.filter(o -> o.equals(observer))		//filter: continue stream with o st. o == observer
+//				.ifPresentOrElse(o -> {throw new IllegalArgumentException("Observer already registered");}, //find any is required for this line to work otherwise stream doesn't know if it can be evaluated (nothing searched)
+//						() -> {newObserverSet.add(observer); //() - no arguments given therefore the next pieces of code are executed without any lambda parameters
+//						observerSet = ImmutableSet.copyOf(newObserverSet); // code in {} acts like normal code
+//						newObserverSet.clear();}
+//				);
+//				Stream works, unused for clarity
+//				Find Any and Filter have been switched around and stream works either way
+//				assumed that when findAny is first, list of Optionals is fed into filter
+//				other way round is where findAny matches the predicate of the filter
 			}
 
 			@Override
 			public void unregisterObserver(@Nonnull Observer observer) {
-				if (this.equals(null)) throw new IllegalArgumentException("Observers list is empty");
 				if (observer.equals(null)) throw new NullPointerException("Null observer");
 				if (observerSet.contains(observer)) {
 					newObserverSet.addAll(observerSet);
@@ -54,7 +60,18 @@ public final class MyModelFactory implements Factory<Model> {
 					newObserverSet.clear();
 				}
 				else throw new IllegalArgumentException("Observer not registered");
-
+//				newObserverSet.addAll(observerSet);
+//				newObserverSet.stream()
+//				.findAny()
+//				.filter(o -> o.equals(observer))
+//				.ifPresentOrElse((o) -> {
+//					newObserverSet.remove(o);
+//					observerSet = ImmutableSet.copyOf(newObserverSet);
+//					newObserverSet.clear();},
+//						() -> {newObserverSet.clear();
+//					if (observer.equals(null)) throw new NullPointerException("Null observer");
+//					else throw new IllegalArgumentException("Observer not registered");});
+//				Stream works, unused for same reason as above
 			}
 
 			@Nonnull @Override
