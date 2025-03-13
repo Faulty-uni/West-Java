@@ -19,11 +19,14 @@ public final class MyModelFactory implements Factory<Model> {
 										  ImmutableList<Player> detectives) {
 		return new Model(){
 			ImmutableSet<Model.Observer> observerSet = ImmutableSet.of();
-			List<Observer> newObserverSet = new ArrayList<>(); //intermediary list used to add new elements to ImmutableSet
-
+			private List<Observer> newObserverSet = new ArrayList<>(); //intermediary list used to add new elements to ImmutableSet
+			private Observer.Event nEvent;
+			private boolean detectivesCanMove = true;
+			private int moveSize = 0;
+			private Board.GameState board = new MyGameStateFactory().build(setup,mrX,detectives);
 			@Nonnull @Override
 			public Board getCurrentBoard() {
-				return null;
+				return board;
 			}
 
 			@Override
@@ -81,13 +84,53 @@ public final class MyModelFactory implements Factory<Model> {
 
 			@Override
 			public void chooseMove(@Nonnull Move move) {
-
+//					Observer.Event.MOVE_MADE;
+//				for (Player player : detectives) {
+//					if (getCurrentBoard().getPlayerTickets(player.piece()).isEmpty()) continue;
+//					else moveSize += getCurrentBoard().getPlayerTickets(player.piece()).stream().count();
+//				}
+//				if (moveSize < 1) detectivesCanMove = false;
+//
+//				if(getCurrentBoard().getWinner().isEmpty() && (detectivesCanMove)){
+//					System.out.println("\n winner set: "+getCurrentBoard().getWinner().size());
+//					System.out.println("Detective moves: "+moveSize);
+//					System.out.println("MrX available moves: "+mrX.tickets().size());
+//
+//					if ((getCurrentBoard().getWinner().contains(mrX) || getCurrentBoard().getWinner().contains(detectives))) {
+//						nEvent = Observer.Event.GAME_OVER;
+//					}
+//					if (moveSize <= 1 & !getCurrentBoard().getWinner().isEmpty()) nEvent = Observer.Event.GAME_OVER;
+//					else nEvent = Observer.Event.MOVE_MADE;
+//					for (Observer o : observerSet){
+//						o.onModelChanged(getCurrentBoard(),nEvent);
+//					}
+//                }
+//				else {
+//					nEvent = Observer.Event.GAME_OVER;
+//					for (Observer o : observerSet) {
+//						o.onModelChanged(getCurrentBoard(), nEvent);
+//					}
+//				}
+//				Observer.Event.GAME_OVER.;
 				// TODO Advance the model with move, then notify all observers of what what just happened.
 				//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
 
+				if (getCurrentBoard().getWinner().isEmpty()) {
+					nEvent = Observer.Event.MOVE_MADE;
+					for (Player player : detectives) {
+						if (getCurrentBoard().getPlayerTickets(player.piece()).equals(mrX.location()))
+							nEvent = Observer.Event.GAME_OVER;
+						moveSize += getCurrentBoard().getPlayerTickets(player.piece()).stream().count();
+					}
+				}
+				else nEvent = Observer.Event.GAME_OVER;
+
+				for (Observer o : observerSet) {
+					o.onModelChanged(board, nEvent);
+				}
+//				System.out.println("Move " + moveSize);
+				System.out.println(getCurrentBoard().getWinner());
 			}
 		};
-		// TODO
-		//throw new RuntimeException("Implement me!");
 	}
 }

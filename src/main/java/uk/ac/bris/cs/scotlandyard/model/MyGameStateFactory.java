@@ -67,43 +67,108 @@ public final class MyGameStateFactory implements Factory<GameState> {
 				updatedDetectives.add(updatedPlayer);
 			}
 
-			// If a detective moved, ensure other detectives still get their turns
-			boolean detectivesStillMoving = false;
+			// If a detective moved, only add those who haven't moved yet
 			if (!updatedPlayer.isMrX()) {
 				for (Player detective : updatedDetectives) {
-					if (!detective.piece().equals(updatedPlayer.piece()) && !generateSingleMoves(detective).isEmpty()) {
-						updatedRemaining.add(detective.piece());
-						detectivesStillMoving = true;
+					if (!detective.piece().equals(updatedPlayer.piece()) && remaining.contains(detective.piece())) {
+						updatedRemaining.add(detective.piece()); // Only add detectives who haven't moved
 					}
 				}
-			}
 
-			// If all detectives are stuck, immediately switch to MrX**
-			if (!detectivesStillMoving) {
-				System.out.println("All detectives stuck switching to MrX");
-				updatedRemaining.clear();
-				updatedRemaining.add(mrX.piece());
-			}
-
-			// If MrX moved, reset turns to all detectives
-			if (updatedPlayer.isMrX()) {
+				// If all detectives moved, switch to MrX's turn
+				if (updatedRemaining.isEmpty()) {
+					updatedRemaining.add(mrX.piece());
+				}
+			} else {
+				// If MrX moved, reset turns to all detectives
 				updatedRemaining.clear();
 				for (Player d : updatedDetectives) {
 					updatedRemaining.add(d.piece());
 				}
 			}
 
-			// Ensure MrX gets his turn when he should
-			if (updatedRemaining.isEmpty()) {
+			// 🛠 FIX: Ensure MrX gets his turn when all detectives are stuck
+			boolean allDetectivesStuck = true;
+			for (Player detective : updatedDetectives) {
+				if (!generateSingleMoves(detective).isEmpty()) {
+					allDetectivesStuck = false;
+					break;
+				}
+			}
+
+			if (allDetectivesStuck) {
+				System.out.println(" All detectives are stuck. MrX should move.");
+				updatedRemaining.clear();
 				updatedRemaining.add(mrX.piece());
 			}
 
-			// Deb,Print the new remaining players after the move
-			System.out.println("New remaining players after update: " + updatedRemaining);
+			// 🛠 FIX: If updatedRemaining is empty, but MrX still has moves, ensure he moves
+			if (updatedRemaining.isEmpty() && !generateSingleMoves(mrX).isEmpty()) {
+				System.out.println(" Detectives finished moving, but MrX can still move. Assigning MrX's turn.");
+				updatedRemaining.add(mrX.piece());
+			}
+
+			// Debug: Print the new remaining players after the move
+			System.out.println(" New remaining players after update: " + updatedRemaining);
 
 			return new MyGameState(setup, ImmutableSet.copyOf(updatedRemaining), ImmutableList.copyOf(newLog),
 					updatedPlayer.isMrX() ? updatedPlayer : mrX, updatedDetectives);
 		}
+
+		/* gamestate code that passes the other two tests but fails another 4, needs to be combined with this
+
+		private GameState updateGameState(Player updatedPlayer, List<LogEntry> newLog) {
+    List<Player> updatedDetectives = new ArrayList<>(detectives);
+    Set<Piece> updatedRemaining = new HashSet<>();
+
+    // Replace the detective in the list if they moved
+    if (!updatedPlayer.isMrX()) {
+        updatedDetectives.removeIf(d -> d.piece().equals(updatedPlayer.piece()));
+        updatedDetectives.add(updatedPlayer);
+    }
+
+    // Detectives still moving?
+    boolean detectivesStillMoving = false;
+    if (!updatedPlayer.isMrX()) {
+        for (Player detective : updatedDetectives) {
+            if (!detective.piece().equals(updatedPlayer.piece()) && !generateSingleMoves(detective).isEmpty()) {
+                updatedRemaining.add(detective.piece());
+                detectivesStillMoving = true;
+            }
+        }
+    }
+
+    //If no detectives left, switch to MrX
+    if (!detectivesStillMoving) {
+        System.out.println("🚨 All detectives are stuck or finished. Switching to MrX.");
+        updatedRemaining.clear();
+        updatedRemaining.add(mrX.piece());
+    }
+
+    //MrX moved, so reset to detectives
+    if (updatedPlayer.isMrX()) {
+        updatedRemaining.clear();
+        for (Player d : updatedDetectives) {
+            updatedRemaining.add(d.piece());
+        }
+    }
+
+    //Ensure MrX moves after detectives, but not early
+    if (updatedRemaining.isEmpty()) {
+        if (!generateSingleMoves(mrX).isEmpty()) {
+            System.out.println("Detectives finished. Now MrX moves.");
+            updatedRemaining.add(mrX.piece());
+        }
+    }
+
+    // Debugging
+    System.out.println("New remaining players after update: " + updatedRemaining);
+
+    return new MyGameState(setup, ImmutableSet.copyOf(updatedRemaining), ImmutableList.copyOf(newLog),
+            updatedPlayer.isMrX() ? updatedPlayer : mrX, updatedDetectives);
+}
+*/
+
 
 
 
@@ -263,10 +328,15 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// Generate moves for MrX
 			if (remaining.contains(mrX.piece())) {
 				System.out.println("Checking available moves for MrX at " + mrX.location());
-				Set<Move.SingleMove> singleMoves = generateSingleMoves(mrX).stream()
-						.filter(move -> move instanceof Move.SingleMove)
-						.map(move -> (Move.SingleMove) move)
-						.collect(Collectors.toSet());
+
+				Set<Move.SingleMove> singleMoves = new HashSet<>();
+
+				// Iterate over generated moves and filter only SingleMove instances
+				for (Move move : generateSingleMoves(mrX)) {
+					if (move instanceof Move.SingleMove) {
+						singleMoves.add((Move.SingleMove) move);
+					}
+				}
 
 				// Always add SingleMoves
 				moves.addAll(singleMoves);
@@ -277,13 +347,21 @@ public final class MyGameStateFactory implements Factory<GameState> {
 				// Add DoubleMoves if MrX has a DOUBLE ticket
 				if (mrX.has(Ticket.DOUBLE)) {
 					System.out.println("MrX has DOUBLE ticket, checking DoubleMoves...");
+
 					for (Move.SingleMove firstMove : singleMoves) {
 						Player tempMrX = mrX.at(firstMove.destination);
 
-						Set<Move.SingleMove> secondMoves = generateSingleMoves(tempMrX).stream()
-								.filter(move -> move instanceof Move.SingleMove)
-								.map(move -> (Move.SingleMove) move)
-								.collect(Collectors.toSet());
+						Set<Move.SingleMove> secondMoves = new HashSet<>();
+
+						// Iterate over generated moves and filter only SingleMove instances
+						for (Move move : generateSingleMoves(tempMrX)) {
+							if (move instanceof Move.SingleMove) {
+								secondMoves.add((Move.SingleMove) move);
+							}
+						}
+
+						// Debug second moves
+						System.out.println("Second moves from " + firstMove.destination + ": " + secondMoves);
 
 						for (Move.SingleMove secondMove : secondMoves) {
 							if (mrX.has(firstMove.ticket) && mrX.has(secondMove.ticket)) {
