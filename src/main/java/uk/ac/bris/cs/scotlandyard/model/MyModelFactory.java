@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import javax.annotation.Nonnull;
 import uk.ac.bris.cs.scotlandyard.model.ScotlandYard.Factory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -21,16 +20,13 @@ public final class MyModelFactory implements Factory<Model> {
 			ImmutableSet<Model.Observer> observerSet = ImmutableSet.of();
 			private List<Observer> newObserverSet = new ArrayList<>(); //intermediary list used to add new elements to ImmutableSet
 			private Observer.Event nEvent;
-			private boolean detectivesCanMove = true;
-			private int moveSize = 0;
 			private Board.GameState board = new MyGameStateFactory().build(setup,mrX,detectives);
-			@Nonnull @Override
-			public Board getCurrentBoard() {
+
+			@Nonnull @Override public Board getCurrentBoard() {
 				return board;
 			}
 
-			@Override
-			public void registerObserver(@Nonnull Observer observer) {
+			@Override public void registerObserver(@Nonnull Observer observer) {
 				if (observer.equals(null)) throw new NullPointerException("Null observer");
 				if (observerSet.contains(observer)) throw new IllegalArgumentException("Observer already registered");
 				newObserverSet.addAll(observerSet);
@@ -82,9 +78,9 @@ public final class MyModelFactory implements Factory<Model> {
 				return Optional.ofNullable(observerSet).orElse(ImmutableSet.of());
 			}
 
-			@Override
-			public void chooseMove(@Nonnull Move move) {
-//					Observer.Event.MOVE_MADE;
+
+
+			//					Observer.Event.MOVE_MADE;
 //				for (Player player : detectives) {
 //					if (getCurrentBoard().getPlayerTickets(player.piece()).isEmpty()) continue;
 //					else moveSize += getCurrentBoard().getPlayerTickets(player.piece()).stream().count();
@@ -112,24 +108,29 @@ public final class MyModelFactory implements Factory<Model> {
 //					}
 //				}
 //				Observer.Event.GAME_OVER.;
-				// TODO Advance the model with move, then notify all observers of what what just happened.
-				//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
 
-				if (getCurrentBoard().getWinner().isEmpty()) {
-					nEvent = Observer.Event.MOVE_MADE;
-					for (Player player : detectives) {
-						if (getCurrentBoard().getPlayerTickets(player.piece()).equals(mrX.location()))
-							nEvent = Observer.Event.GAME_OVER;
-						moveSize += getCurrentBoard().getPlayerTickets(player.piece()).stream().count();
-					}
+			@Override
+			public void chooseMove(@Nonnull Move move) {
+
+				if (!board.getAvailableMoves().contains(move)) {
+					throw new IllegalArgumentException("Invalid move attempted: " + move);
 				}
-				else nEvent = Observer.Event.GAME_OVER;
 
+				// Advance the game state
+				board = board.advance(move);
+
+				// Debugging: Print winner status
+				ImmutableSet<Piece> winner = board.getWinner();
+				if (winner.isEmpty()) {
+					nEvent = Observer.Event.MOVE_MADE;
+				} else {
+					nEvent = Observer.Event.GAME_OVER;
+				}
+
+				// Notify all observers
 				for (Observer o : observerSet) {
 					o.onModelChanged(board, nEvent);
 				}
-//				System.out.println("Move " + moveSize);
-				System.out.println(getCurrentBoard().getWinner());
 			}
 		};
 	}
