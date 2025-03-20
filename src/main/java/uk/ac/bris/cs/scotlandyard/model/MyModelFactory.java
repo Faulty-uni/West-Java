@@ -78,37 +78,6 @@ public final class MyModelFactory implements Factory<Model> {
 				return Optional.ofNullable(observerSet).orElse(ImmutableSet.of());
 			}
 
-
-
-			//					Observer.Event.MOVE_MADE;
-//				for (Player player : detectives) {
-//					if (getCurrentBoard().getPlayerTickets(player.piece()).isEmpty()) continue;
-//					else moveSize += getCurrentBoard().getPlayerTickets(player.piece()).stream().count();
-//				}
-//				if (moveSize < 1) detectivesCanMove = false;
-//
-//				if(getCurrentBoard().getWinner().isEmpty() && (detectivesCanMove)){
-//					System.out.println("\n winner set: "+getCurrentBoard().getWinner().size());
-//					System.out.println("Detective moves: "+moveSize);
-//					System.out.println("MrX available moves: "+mrX.tickets().size());
-//
-//					if ((getCurrentBoard().getWinner().contains(mrX) || getCurrentBoard().getWinner().contains(detectives))) {
-//						nEvent = Observer.Event.GAME_OVER;
-//					}
-//					if (moveSize <= 1 & !getCurrentBoard().getWinner().isEmpty()) nEvent = Observer.Event.GAME_OVER;
-//					else nEvent = Observer.Event.MOVE_MADE;
-//					for (Observer o : observerSet){
-//						o.onModelChanged(getCurrentBoard(),nEvent);
-//					}
-//                }
-//				else {
-//					nEvent = Observer.Event.GAME_OVER;
-//					for (Observer o : observerSet) {
-//						o.onModelChanged(getCurrentBoard(), nEvent);
-//					}
-//				}
-//				Observer.Event.GAME_OVER.;
-
 			@Override
 			public void chooseMove(@Nonnull Move move) {
 

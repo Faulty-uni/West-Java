@@ -30,8 +30,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 				final List<Player> detectives) {
 
 			Set<Integer> locations = new HashSet<>();
-			List<Player> allPlayers = new ArrayList<>();
-			allPlayers.addAll(detectives);
+			List<Player> allPlayers = new ArrayList<>(detectives);
+//			allPlayers.addAll(detectives);
 			allPlayers.add(mrX);
 
 			this.setup = setup;
@@ -191,8 +191,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return winner;
 		}
 
-
-
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -287,12 +285,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 					}
 				}
 			}
-
 			return secondMoves;
 		}
-
-
-
 
 		@Override
 		public Optional<Integer> getDetectiveLocation(Detective detective) {
@@ -323,7 +317,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return ImmutableSet.copyOf(players);
 		}
 
-
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -347,8 +340,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			if (player == null) {
 				throw new IllegalArgumentException("Player not found");
 			}
-
-
 
 			// Process the move using the visitor pattern
 			return move.accept(new Move.Visitor<GameState>() {
