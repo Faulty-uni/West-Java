@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.util.*;
-import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import uk.ac.bris.cs.scotlandyard.model.Board.GameState;
 import uk.ac.bris.cs.scotlandyard.model.Move.*;
@@ -30,8 +29,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 				final List<Player> detectives) {
 
 			Set<Integer> locations = new HashSet<>();
-			List<Player> allPlayers = new ArrayList<>(detectives);
-//			allPlayers.addAll(detectives);
+			List<Player> allPlayers = new ArrayList<>();
+			allPlayers.addAll(detectives);
 			allPlayers.add(mrX);
 
 			this.setup = setup;
@@ -64,16 +63,47 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return log;
 		}
 
-		@Override public int getCount(@Nonnull Ticket ticket) {
+		@Override public int getCount(@Nonnull Ticket t) {
 			return log.size();
 		}
 
+		private Player getDetective(Piece p) {
+			for (Player detective : detectives) if (detective.piece().equals(p)) return detective;
+			return null;
+		}
+
+		@Override public Optional<Integer> getDetectiveLocation(Detective detective) {
+			for (Player p : detectives) {
+				if (p.piece().equals(detective)) return Optional.of(p.location());
+			}
+			return Optional.empty();
+		}
+
+		@Nonnull @Override public Optional<Board.TicketBoard> getPlayerTickets(Piece piece) {
+			for (Player d: detectives) {
+				if (d.piece().equals(piece)) return Optional.of(ticket -> d.tickets().getOrDefault(ticket, 0));
+			}
+			if (mrX.piece().equals(piece)) return Optional.of(ticket -> mrX.tickets().getOrDefault(ticket, 0));
+			return Optional.empty();
+		}
+
+		@Nonnull @Override public ImmutableSet<Piece> getPlayers() {
+			Set<Piece> players = new HashSet<>();
+			players.add(mrX.piece()); // Add MrX
+			for (Player d : detectives) {
+				players.add(d.piece()); // Add detectives
+			}
+			return ImmutableSet.copyOf(players);
+		}
+
+		//checks if a node is occupied by a detective
 		private boolean isNodeOccupiedByDetective(int nodeLocation) {
-			for (Player detective : detectives)
-				if (detective.location() == nodeLocation) return true;
+			for (Player d : detectives)
+				if (d.location() == nodeLocation) return true;
 			return false;
 		}
 
+		//generates all available singlemoves for a player from their current position
 		private Set<Move> generateSingleMoves(Player player) {
 			Set<Move> moves = new HashSet<>();
 
@@ -87,46 +117,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			}
 			return moves;
 		}
-
-		private GameState updatedState(Player updatedPlayer, List<LogEntry> newLog) {
-			List<Player> updatedDetectives = new ArrayList<>(detectives);
-			Set<Piece> updatedRemaining = new HashSet<>(remaining); // starts with current remaining
-
-			// If the player was a detective, remove them from `remaining`
-			if (!updatedPlayer.isMrX()) {
-				updatedRemaining.remove(updatedPlayer.piece());
-
-				// Replace detective in the list
-				updatedDetectives.removeIf(d -> d.piece().equals(updatedPlayer.piece()));
-				updatedDetectives.add(updatedPlayer);
-			}
-
-			// Detectives that haven't moved yet
-			boolean detectivesStillMoving = updatedDetectives.stream()
-					.anyMatch(d -> updatedRemaining.contains(d.piece()) && !generateSingleMoves(d).isEmpty());
-
-			// If all detectives moved, reset turns to MrX
-			if (!detectivesStillMoving) {
-				updatedRemaining.clear();
-				updatedRemaining.add(mrX.piece()); // Only MrX can move now
-			}
-
-			// If it's MrX’s turn, reset turns to all detectives after move
-			if (updatedPlayer.isMrX()) {
-				updatedRemaining.clear();
-				for (Player d : updatedDetectives) {
-					updatedRemaining.add(d.piece()); // Reset all detectives' turns
-				}
-			}
-
-
-			return new MyGameState(setup, ImmutableSet.copyOf(updatedRemaining), ImmutableList.copyOf(newLog),
-					updatedPlayer.isMrX() ? updatedPlayer : mrX, updatedDetectives);
-		}
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 		// getWinner helper functions
 
@@ -191,46 +181,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return winner;
 		}
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-		@Nonnull @Override
-		public ImmutableSet<Move> getAvailableMoves() {
-			if (!winner.isEmpty()) {
-				return ImmutableSet.of();
-			}
-
-			ImmutableSet.Builder<Move> moves = ImmutableSet.builder();
-
-			if (remaining.contains(mrX.piece())) {
-				addMrXMoves(moves);
-			} else {
-				addDetectiveMoves(moves);
-			}
-
-			return moves.build();
-		}
-
-		// Add all valid moves for MrX
-		private void addMrXMoves(ImmutableSet.Builder<Move> moves) {
-			Set<Move.SingleMove> singleMoves = getMrXSingleMoves();
-			moves.addAll(singleMoves);
-
-			if (canMrXUseDoubleMove()) {
-				addMrXDoubleMoves(moves, singleMoves);
-			}
-		}
-
-		// Add all valid moves for detectives
-		private void addDetectiveMoves(ImmutableSet.Builder<Move> moves) {
-			for (int i = 0; i < detectives.size(); i++) {
-				Player detective = detectives.get(i);
-				if (remaining.contains(detective.piece())) {
-					moves.addAll(generateSingleMoves(detective));
-				}
-			}
-		}
+		//getAvailableMoves and it's helper functions
 
 		// Generate valid single moves for MrX (avoiding occupied destinations)
 		private Set<Move.SingleMove> getMrXSingleMoves() {
@@ -246,6 +197,22 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			}
 
 			return singleMoves;
+		}
+
+		// Generate valid single moves for MrX AFTER taking the first move
+		private Set<Move.SingleMove> getMrXSingleMovesAfter(Player tempMrX) {
+			Set<Move.SingleMove> secondMoves = new HashSet<>();
+
+			for (Move move : generateSingleMoves(tempMrX)) {
+				if (move instanceof Move.SingleMove) {
+					Move.SingleMove secondMove = (Move.SingleMove) move;
+					if (!isNodeOccupiedByDetective(secondMove.destination)) {
+						secondMoves.add(secondMove);
+					}
+				}
+			}
+
+			return secondMoves;
 		}
 
 		// Check if MrX can use a DOUBLE move
@@ -273,86 +240,80 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			}
 		}
 
-		// Generate valid single moves for MrX AFTER taking the first move
-		private Set<Move.SingleMove> getMrXSingleMovesAfter(Player tempMrX) {
-			Set<Move.SingleMove> secondMoves = new HashSet<>();
 
-			for (Move move : generateSingleMoves(tempMrX)) {
-				if (move instanceof Move.SingleMove) {
-					Move.SingleMove secondMove = (Move.SingleMove) move;
-					if (!isNodeOccupiedByDetective(secondMove.destination)) {
-						secondMoves.add(secondMove);
-					}
+
+
+		// Add all valid moves for MrX
+		private void addMrXMoves(ImmutableSet.Builder<Move> moves) {
+			Set<Move.SingleMove> singleMoves = getMrXSingleMoves();
+			moves.addAll(singleMoves);
+
+			if (canMrXUseDoubleMove()) {
+				addMrXDoubleMoves(moves, singleMoves);
+			}
+		}
+
+		// Add all valid moves for detectives
+		private void addDetectiveMoves(ImmutableSet.Builder<Move> moves) {
+			for (int i = 0; i < detectives.size(); i++) {
+				Player detective = detectives.get(i);
+				if (remaining.contains(detective.piece())) {
+					moves.addAll(generateSingleMoves(detective));
 				}
 			}
-			return secondMoves;
 		}
 
-		@Override
-		public Optional<Integer> getDetectiveLocation(Detective detective) {
-			for (Player p : detectives) {
-				if (p.piece().equals(detective)) return Optional.of(p.location());
+		@Nonnull @Override
+		public ImmutableSet<Move> getAvailableMoves() {
+			if (!winner.isEmpty()) {
+				return ImmutableSet.of();
 			}
-			return Optional.empty();
+
+			ImmutableSet.Builder<Move> moves = ImmutableSet.builder();
+
+			if (remaining.contains(mrX.piece())) {
+				addMrXMoves(moves);
+			} else {
+				addDetectiveMoves(moves);
+			}
+
+			return moves.build();
 		}
 
-		@Nonnull
-		@Override
-		public Optional<Board.TicketBoard> getPlayerTickets(Piece piece) {
-			for (Player p : detectives) {
-				if (p.piece().equals(piece)) return Optional.of(ticket -> p.tickets().getOrDefault(ticket, 0));
-			}
-			if (mrX.piece().equals(piece)) return Optional.of(ticket -> mrX.tickets().getOrDefault(ticket, 0));
-			return Optional.empty();
-		}
+		private GameState updatedState(Player updatedPlayer, List<LogEntry> newLog) {
+			List<Player> updatedDetectives = new ArrayList<>(detectives);
+			Set<Piece> updatedRemaining = new HashSet<>(remaining); // starts with current remaining
 
-		@Nonnull
-		@Override
-		public ImmutableSet<Piece> getPlayers() {
-			Set<Piece> players = new HashSet<>();
-			players.add(mrX.piece()); // Add MrX
-			for (Player detective : detectives) {
-				players.add(detective.piece()); // Add detectives
-			}
-			return ImmutableSet.copyOf(players);
-		}
+			// If the player was a detective, remove them from `remaining`
+			if (!updatedPlayer.isMrX()) {
+				updatedRemaining.remove(updatedPlayer.piece());
 
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-		private Player getDetective(Piece p) {
-			for (Player detective : detectives) if (detective.piece().equals(p)) return detective;
-			return null;
-		}
-
-		@Override
-		public GameState advance(Move move) {
-			// Ensure move is valid
-			Set<Move> availableMoves = getAvailableMoves();
-			if (!availableMoves.contains(move)) {
-				throw new IllegalArgumentException("Invalid move");
+				// Replace detective in the list
+				updatedDetectives.removeIf(d -> d.piece().equals(updatedPlayer.piece()));
+				updatedDetectives.add(updatedPlayer);
 			}
 
-			// Identify the player making the move
-			Player player = move.commencedBy().isMrX() ? mrX : getDetective(move.commencedBy());
+			// Detectives that haven't moved yet
+			boolean detectivesStillMoving = updatedDetectives.stream()
+					.anyMatch(d -> updatedRemaining.contains(d.piece()) && !generateSingleMoves(d).isEmpty());
 
-			if (player == null) {
-				throw new IllegalArgumentException("Player not found");
+			// If all detectives moved, reset turns to MrX
+			if (!detectivesStillMoving) {
+				updatedRemaining.clear();
+				updatedRemaining.add(mrX.piece()); // Only MrX can move now
 			}
 
-			// Process the move using the visitor pattern
-			return move.accept(new Move.Visitor<GameState>() {
-				@Override
-				public GameState visit(Move.SingleMove singleMove) {
-					return processSingleMove(player, singleMove);
+			// If it's MrX’s turn, reset turns to all detectives after move
+			if (updatedPlayer.isMrX()) {
+				updatedRemaining.clear();
+				for (Player d : updatedDetectives) {
+					updatedRemaining.add(d.piece()); // Reset all detectives' turns
 				}
+			}
 
-				@Override
-				public GameState visit(Move.DoubleMove doubleMove) {
-					return processDoubleMove(player, doubleMove);
-				}
-			});
+
+			return new MyGameState(setup, ImmutableSet.copyOf(updatedRemaining), ImmutableList.copyOf(newLog),
+					updatedPlayer.isMrX() ? updatedPlayer : mrX, updatedDetectives);
 		}
 
 		private GameState processSingleMove(Player player, Move.SingleMove singleMove) {
@@ -416,6 +377,35 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return newState;
 		}
 
+
+		@Override
+		public GameState advance(Move move) {
+			// Ensure move is valid
+			Set<Move> availableMoves = getAvailableMoves();
+			if (!availableMoves.contains(move)) {
+				throw new IllegalArgumentException("Invalid move");
+			}
+
+			// Identify the player making the move
+			Player player = move.commencedBy().isMrX() ? mrX : getDetective(move.commencedBy());
+
+			if (player == null) {
+				throw new IllegalArgumentException("Player not found");
+			}
+
+
+
+			// Process the move using the visitor pattern
+			return move.accept(new Move.Visitor<>() {
+                @Override public GameState visit(Move.SingleMove singleMove) {
+                    return processSingleMove(player, singleMove);
+                }
+
+                @Override public GameState visit(Move.DoubleMove doubleMove) {
+                    return processDoubleMove(player, doubleMove);
+                }
+            });
+		}
 	}
 
 	@Nonnull @Override public GameState build(GameSetup setup, Player mrX, ImmutableList<Player> detectives)
