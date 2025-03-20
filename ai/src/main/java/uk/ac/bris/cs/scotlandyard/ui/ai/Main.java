@@ -1,5 +1,6 @@
 package uk.ac.bris.cs.scotlandyard.ui.ai;
 
+import java.util.*;
 /**
  * Delegates to the actual UI main
  */
