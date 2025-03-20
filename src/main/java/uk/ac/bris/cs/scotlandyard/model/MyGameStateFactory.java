@@ -40,17 +40,17 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			this.winner = ImmutableSet.of();
 			this.remaining = remaining; //pieces that are yet to move
 
-			if (setup.moves.isEmpty()) throw new IllegalArgumentException("Moves is empty");
-			if (this.detectives.isEmpty()) throw new IllegalArgumentException("Detectives is empty");
-			if (!this.mrX.isMrX()) throw new IllegalArgumentException("MrX is null");
-			if (setup.graph.nodes().isEmpty()) throw new IllegalArgumentException("Graph is empty");
+			if (setup.moves.isEmpty()) throw new IllegalArgumentException("No available moves!");
+			if (this.detectives.isEmpty()) throw new IllegalArgumentException("No detectives found!");
+			if (!this.mrX.isMrX()) throw new IllegalArgumentException("MrX is null!");
+			if (setup.graph.nodes().isEmpty()) throw new IllegalArgumentException("Graph is empty!");
 
 
 			for (Player p : detectives) {
-				if (p.isMrX()) throw new IllegalArgumentException("Detective cannot be MrX");
-				if (p.has(Ticket.SECRET)) throw new IllegalArgumentException("Detective has secret tickets");
-				if (p.has(Ticket.DOUBLE)) throw new IllegalArgumentException("Detective has double tickets");
-				if (!locations.add(p.location())) throw new IllegalArgumentException("Duplicate detective location");
+				if (p.isMrX()) throw new IllegalArgumentException("Detective cannot be MrX!");
+				if (p.has(Ticket.SECRET)) throw new IllegalArgumentException("Detective cannot have secret tickets!");
+				if (p.has(Ticket.DOUBLE)) throw new IllegalArgumentException("Detective cannot have double tickets!");
+				if (!locations.add(p.location())) throw new IllegalArgumentException("Duplicate detective location found!");
 			}
 		}
 
@@ -88,12 +88,12 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		}
 
 		@Nonnull @Override public ImmutableSet<Piece> getPlayers() { //returns a set of all players in game
-			Set<Piece> players = new HashSet<>();
-			players.add(mrX.piece()); // Add MrX
+			Set<Piece> Allplayers = new HashSet<>();
+			Allplayers.add(mrX.piece()); // Add MrX
 			for (Player d : detectives) {
-				players.add(d.piece()); // Add detectives
+				Allplayers.add(d.piece()); // Add detectives
 			}
-			return ImmutableSet.copyOf(players);
+			return ImmutableSet.copyOf(Allplayers);
 		}
 
 		private boolean isNodeOccupiedByDetective(int nodeLocation) { //checks if a node is occupied by a detective
@@ -102,18 +102,18 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return false;
 		}
 
-		private Set<Move> generateSingleMoves(Player player) { //generates all available singlemoves for a player from their current position
+		private Set<Move.SingleMove> generateSingleMoves(Player player) { //generates all available singlemoves for a player from their current position
 
-			Set<Move> moves = new HashSet<>();
+			Set<Move.SingleMove> moves = new HashSet<>();
 
 			for (int destination : setup.graph.adjacentNodes(player.location())) {
 				if (isNodeOccupiedByDetective(destination)) continue; // exits this iteration of loop if destination node is occupied by detective
 
 				for (Transport t : setup.graph.edgeValueOrDefault(player.location(), destination, ImmutableSet.of())) { // if there is no connection between player loc and
 																														// destination it returns an empty set
-					if (player.has(t.requiredTicket())) moves.add(new SingleMove(player.piece(), player.location(), t.requiredTicket(), destination)); // if player has required ticket a new move is added to set
+					if (player.has(t.requiredTicket())) moves.add(new Move.SingleMove(player.piece(), player.location(), t.requiredTicket(), destination)); // if player has required ticket a new move is added to set
 				}
-				if (player.has(Ticket.SECRET)) moves.add(new SingleMove(mrX.piece(), mrX.location(), Ticket.SECRET, destination));//Secret ticket implementation only for mrX
+				if (player.has(Ticket.SECRET)) moves.add(new Move.SingleMove(mrX.piece(), mrX.location(), Ticket.SECRET, destination));//Secret ticket implementation only for mrX
 
 			}
 			return moves;
@@ -152,12 +152,12 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return true;
 		}
 
-		private ImmutableSet<Piece> getDetectiveWinners() {	// adds akk detectives to Hashset if they're winners
-			Set<Piece> detectiveWinners = new HashSet<>();
+		private ImmutableSet<Piece> getDetectiveWinners() {	// adds detectives to Hashset if they're winners
+			Set<Piece> winningDetectives = new HashSet<>();
 			for (Player detective : detectives) {
-				detectiveWinners.add(detective.piece());
+				winningDetectives.add(detective.piece());
 			}
-			return ImmutableSet.copyOf(detectiveWinners);
+			return ImmutableSet.copyOf(winningDetectives);
 		}
 
 		private boolean isMrXStuck() {	// Check if MrX is stuck (his turn, but no moves available)
@@ -178,69 +178,46 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 		//getAvailableMoves and it's helper functions
 
-		private Set<Move.SingleMove> getMrXSingleMoves() {	//returns a set of singlemoves for mrx
-			Set<Move.SingleMove> singleMoves = new HashSet<>();
-
-			for (Move move : generateSingleMoves(mrX)) {
-				if (move instanceof Move.SingleMove) { // check if move is as of type Singlemove
-					Move.SingleMove singleMove = (Move.SingleMove) move; // downcast move from parent class to access singleMove
-					if (!isNodeOccupiedByDetective(singleMove.destination)) { //if Node isn't occupied by a detective add that singleMove to the set
-						singleMoves.add(singleMove);
-					}
-				}
-			}
-
+		private Set<Move.SingleMove> getMrXSingleMoves() {// Returns a set of valid SingleMoves for MrX
+			Set<Move.SingleMove> singleMoves = generateSingleMoves(mrX);
+			singleMoves.removeIf(move -> isNodeOccupiedByDetective(move.destination)); //remove any move where destination is occupied by a detective
 			return singleMoves;
 		}
 
-		private Set<Move.SingleMove> getMrXSingleMovesAfter(Player mrX) {// Generate single moves for MrX AFTER taking the first move
-			Set<Move.SingleMove> secondMoves = new HashSet<>();
-
-			for (Move move : generateSingleMoves(mrX)) { //just like getMrXSingleMoves
-				if (move instanceof Move.SingleMove) {
-					Move.SingleMove secondMove = (Move.SingleMove) move;
-					if (!isNodeOccupiedByDetective(secondMove.destination)) {
-						secondMoves.add(secondMove);
-					}
-				}
-			}
-
+		private Set<Move.SingleMove> getMrXSingleMovesAfter(Player mrX) {// Generate single moves for MrX AFTER the first move
+			Set<Move.SingleMove> secondMoves = generateSingleMoves(mrX);
+			secondMoves.removeIf(move -> isNodeOccupiedByDetective(move.destination));
 			return secondMoves;
 		}
+
 
 		private boolean canMrXUseDoubleMove() {	// Check if MrX can use a DOUBLE move
 			return mrX.has(Ticket.DOUBLE) && setup.moves.size() > log.size() + 1; //checks if mrX has doubleticket and if total available rounds have 2 space
 		}
 
-		private Set<Move> addMrXDoubleMoves(Set<Move.SingleMove> singleMoves) {
+		private Set<Move> addMrXDoubleMoves(Set<Move.SingleMove> singleMoves) { //returns set of doublemoves for mrx
 			Set<Move> moves = new HashSet<>();
 
-			for (Move.SingleMove firstMove : singleMoves) {
-				if (!mrX.has(firstMove.ticket)) continue; //if mrX doesnt have ticket for first move exit iteration fo this loop
+			singleMoves.removeIf(move -> !mrX.has(move.ticket));	// Remove first moves if MrX doesnt have the ticket
 
-				Player tempMrX = mrX.at(firstMove.destination); //make a temporary mrX located at the destination of the first move
-				Set<Move.SingleMove> secondMoves = getMrXSingleMovesAfter(tempMrX); //get the singlemoves for mrX after his potential first move
+			for (Move.SingleMove firstMove : singleMoves) {
+				Player mrX2 = mrX.at(firstMove.destination); //mrX2 acting as a bridge in the doublemove
+				Set<Move.SingleMove> secondMoves = getMrXSingleMovesAfter(mrX2); //get the second moves
+
+				secondMoves.removeIf(move -> !mrX.has(move.ticket));// Remove second moves if MrX doesnt have the ticket
 
 				for (Move.SingleMove secondMove : secondMoves) {
-					if (mrX.has(firstMove.ticket) && mrX.has(secondMove.ticket) && // if mrX has tickets for both first and second move
-							(firstMove.ticket != secondMove.ticket || mrX.tickets().get(firstMove.ticket) > 1)) { // and the ticket for both moves aren't the same or he has more than one of those tickets
-
-						Move.DoubleMove doubleMove = new Move.DoubleMove(// generate a new double move
+					if (mrX.tickets().get(firstMove.ticket) > 1 || firstMove.ticket != secondMove.ticket) { // if mrX has more than one type of ticket for its first move or both moves require different tickets
+						moves.add(new Move.DoubleMove( //add double move to the set of moves
 								mrX.piece(), mrX.location(),
 								firstMove.ticket, firstMove.destination,
-								secondMove.ticket, secondMove.destination);
-
-						moves.add(doubleMove);//add double move to set
+								secondMove.ticket, secondMove.destination));
 					}
 				}
 			}
 
-			return moves; // Returns a mutable set, caller must convert to immutableSet if needed
+			return moves;
 		}
-
-
-
-
 
 		private Set<Move> addMrXMoves() {// Add all  moves for MrX and return set
 			Set<Move> moves = new HashSet<>();
@@ -361,8 +338,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 			// Create a copy of the player's ticket map and deduct the used tickets, similar to singlemove
 			Map<Ticket, Integer> newTickets = new HashMap<>(player.tickets());
-			newTickets.put(doubleMove.ticket1, newTickets.get(doubleMove.ticket1) - 1);
-			newTickets.put(doubleMove.ticket2, newTickets.get(doubleMove.ticket2) - 1);
+			newTickets.put(doubleMove.ticket1, newTickets.get(doubleMove.ticket1) - 1); //ticket one used
+			newTickets.put(doubleMove.ticket2, newTickets.get(doubleMove.ticket2) - 1); //ticket two used
 			newTickets.put(Ticket.DOUBLE, newTickets.get(Ticket.DOUBLE) - 1); // Double move ticket used
 
 			// Create an updated version of MrX
@@ -385,26 +362,18 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 
 
-		@Override
-		public GameState advance(Move move) {
-			// Ensure move is valid
+		@Override public GameState advance(Move move) {
 			Set<Move> availableMoves = getAvailableMoves();
-			if (!availableMoves.contains(move)) {
-				throw new IllegalArgumentException("Invalid move");
-			}
+			if (!availableMoves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);	// Ensures move is valid
 
-			// Identify the player making the move
-			Player player = move.commencedBy().isMrX() ? mrX : getDetective(move.commencedBy());
+			Player player = move.commencedBy().isMrX() ? mrX : getDetective(move.commencedBy()); // Identify the player making the move
 
-			if (player == null) {
-				throw new IllegalArgumentException("Player not found");
-			}
+			if (player == null) throw new IllegalArgumentException("Player not found");// if player is null (none selected) throw error
 
 
 
-			// Process the move using the visitor pattern
-			return move.accept(new Move.Visitor<>() {
-                @Override public GameState visit(Move.SingleMove singleMove) {
+			return move.accept(new Move.Visitor<>() {// Process the move using the visitor pattern
+				@Override public GameState visit(Move.SingleMove singleMove) {
                     return processSingleMove(player, singleMove);
                 }
 
