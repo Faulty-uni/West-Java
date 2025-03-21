@@ -19,14 +19,13 @@ public final class MyModelFactory implements Factory<Model> {
 		return new Model(){
 			ImmutableSet<Model.Observer> observerSet = ImmutableSet.of();
 			private List<Observer> newObserverSet = new ArrayList<>(); //intermediary list used to add new elements to ImmutableSet
-			private Observer.Event nEvent;
-			private Board.GameState board = new MyGameStateFactory().build(setup,mrX,detectives);
+            private Board.GameState board = new MyGameStateFactory().build(setup,mrX,detectives);
 
 			@Nonnull @Override public Board getCurrentBoard() {
 				return board;
 			}
 
-			@Override public void registerObserver(@Nonnull Observer observer) {
+			@Override public void registerObserver(@Nonnull Observer observer) { //Registers objects to be observers
 				if (observer.equals(null)) throw new NullPointerException("Null observer");
 				if (observerSet.contains(observer)) throw new IllegalArgumentException("Observer already registered");
 				newObserverSet.addAll(observerSet);
@@ -35,8 +34,23 @@ public final class MyModelFactory implements Factory<Model> {
 				newObserverSet.clear();
 			}
 
+//				newObserverSet.addAll(observerSet); //added first so that findAny can look through the list
+//				newObserverSet.stream()
+//				.findAny()						//find any: Optional return type, either null or set
+//				.filter(o -> o.equals(observer))		//filter: continue stream with o st. o == observer
+//				.ifPresentOrElse(o -> {throw new IllegalArgumentException("Observer already registered");}, //find any is required for this line to work otherwise stream doesn't know if it can be evaluated (nothing searched)
+//						() -> {newObserverSet.add(observer); //() - no arguments given therefore the next pieces of code are executed without any lambda parameters
+//						observerSet = ImmutableSet.copyOf(newObserverSet); // code in {} acts like normal code
+//						newObserverSet.clear();}
+//				);
+//				Stream works, unused for clarity
+//				Find Any and Filter have been switched around and stream works either way
+//				assumed that when findAny is first, list of Optionals is fed into filter
+//				other way round is where findAny matches the predicate of the filter
+
+
 			@Override
-			public void unregisterObserver(@Nonnull Observer observer) {
+			public void unregisterObserver(@Nonnull Observer observer) { //Unregisters observers
 				if (observer.equals(null)) throw new NullPointerException("Null observer");
 				if (observerSet.contains(observer)) {
 					newObserverSet.addAll(observerSet);
@@ -47,27 +61,44 @@ public final class MyModelFactory implements Factory<Model> {
 				else throw new IllegalArgumentException("Observer not registered");
 			}
 
+//				newObserverSet.addAll(observerSet);
+//				newObserverSet.stream()
+//				.findAny()
+//				.filter(o -> o.equals(observer))
+//				.ifPresentOrElse((o) -> {
+//					newObserverSet.remove(o);
+//					observerSet = ImmutableSet.copyOf(newObserverSet);
+//					newObserverSet.clear();},
+//						() -> {newObserverSet.clear();
+//					if (observer.equals(null)) throw new NullPointerException("Null observer");
+//					else throw new IllegalArgumentException("Observer not registered");});
+//				Stream works, unused for same reason as above
+
+
 			@Nonnull @Override
 			public ImmutableSet<Observer> getObservers() {
 				return Optional.ofNullable(observerSet).orElse(ImmutableSet.of());
 			}
-
+//			returns an Immutable set of observers
+//			uses Optional as it can be a null set (which is not a null value itself)
 
 			@Override
-			public void chooseMove(@Nonnull Move move) {
+			public void chooseMove(@Nonnull Move move) { //chooses what signal to send to observers based on the game state after a move was made
 
-				if (!board.getAvailableMoves().contains(move)) { //if move isn't in getavailablemoves throw error
+				if (!board.getAvailableMoves().contains(move)) { //if move isn't in [get available moves] throw error
 					throw new IllegalArgumentException("Invalid move attempted: " + move);
 				}
 
 				// Advance the game state
 				board = board.advance(move);
 
-				ImmutableSet<Piece> winner = board.getWinner(); // use getwinner to add winners to a set
-				if (winner.isEmpty()) { //if there is no winner set nEvent to movemade
+				ImmutableSet<Piece> winner = board.getWinner(); // use getWinner to add winners to a set
+
+                Observer.Event nEvent;
+                if (winner.isEmpty()) { //if there is no winner set nEvent to MOVE_MADE
 					nEvent = Observer.Event.MOVE_MADE;
 				} else {
-					nEvent = Observer.Event.GAME_OVER; // else set event to gameover
+					nEvent = Observer.Event.GAME_OVER; // else set event to GAME_OVER
 				}
 
 				for (Observer o : observerSet) {// Notify all observers
