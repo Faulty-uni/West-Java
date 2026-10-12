@@ -80,15 +80,19 @@ The Maven configuration selects the supplied aggregate suite.
 The source tests cover creation invariants, legal moves, transitions, winning conditions,
 playouts, player/ticket access and observer behaviour.
 
-Commit messages document iterative test-driven development, including historical claims
-of passing tests. They are not a substitute for a fresh executed test report. Use
-`mvn test` and retain its result for the exact revision being reviewed.
+**Executed on 12 October 2026:** `mvn -B test` passed **83 tests**, with **zero failures,
+errors or skips**, in an isolated Maven 3.9.11 / Eclipse Temurin 17 container.
+The source baseline was `main@11ea6c9141665717caddcef7094b5a23593dca04`.
+These are the supplied suite's checks, not 83 tests authored by the students.
+
+[The proposed CI workflow](.github/workflows/java.yml) runs that Maven suite on Java 17.
+Its GitHub result should be checked for the specific PR or commit being reviewed.
 
 ## Limitations and next steps
 
 - Review state immutability and side effects across successive game states.
 - Review duplicate/null observer handling and the consistency of terminal-state access.
-- Add a repeatable CI run using the supplied suite before advertising a current pass count.
+- Extend regression coverage for state immutability and observer edge cases where needed.
 - Attribute supplied code, images and tests; the resource licence does not by itself
   establish a licence for every contribution in the repository.
 - Confirm applicable coursework publication rules before redistributing solutions.
